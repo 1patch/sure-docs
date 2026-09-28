@@ -1,0 +1,27 @@
+# Sure
+
+> Calendar building blocks for people, companies, and their agents. Automate what you want to automate; control what you want to control.
+
+Sure provides owner-authorized calendar MCP, customizable calendar frontends and private Git remotes, project-scoped MCP editing and publication, and public booking RPC. These initial contracts were reviewed on 2026-09-28.
+
+Start here: an invited owner signs in at https://app.sure.day/auth/login, creates or selects a page under Calendars → Booking pages, and creates a project token under Advanced → Agent access. Use the token with https://app.sure.day/project-mcp (Authorization: Bearer) and discover tools with tools/list. The Git remote is returned by project_get and shown in Advanced; use username sure and the project token as the HTTPS password. Never put tokens in source files or remote URLs.
+
+External project access does not expose private calendar reads, account connection, agent conversations, memory, workers, or voice. Public bookers need no owner token; changing a booking requires its private management token. Publishing and booking mutations should follow the relevant person's intent.
+
+For private calendar work, the owner opens Calendars → Agent connections → Manage calendar access and creates a separate calendar token. Use it with https://mcp.sure.day/mcp (Authorization: Bearer); discover its sure_* tools with tools/list and read sure_skill with name calendar-review. The grant covers the owner's connected sources, including calendars hidden from the agenda. Applying source edits needs both an editable token and separate source-management permission. Tokens expire after 30 days and can be revoked individually. Project tokens do not authorize calendar MCP; documentation-search MCP authorizes neither product endpoint.
+
+## Public documentation
+
+- [Documentation overview](https://docs.sure.day): Choose an interface and get started.
+- [Quickstart](https://sure.day/docs/quickstart.md): Connect an owner-authorized agent, edit one heading, commit, preview, and publish the reviewed revision.
+- [Calendar MCP](https://sure.day/docs/calendar.md): Private source reads, calendar-agent tokens, Google and direct iCloud CalDAV management, exact previews, audit outcomes, custom labels, and provider limits.
+- [Projects, MCP, and Git](https://sure.day/docs/projects.md): Authentication, tool calls, source revisions, conflicts, Git, previews, publication, rollback, and one-time GitHub export.
+- [Frontend and scheduling configuration](https://sure.day/docs/configuration.md): sure.json, source limits, static hosting, runtime JSON, and the opt-in private-day preview channel.
+- [Booking RPC](https://sure.day/docs/booking.md): Slots, booking, management capabilities, rescheduling, cancellation, idempotency, states, errors, and rate limits.
+- [Project MCP tool schemas](https://sure.day/docs/mcp-tools.json): Generated snapshot of the eight external project tools. Calendar MCP has a separate authenticated tools/list catalog.
+- [Complete documentation](https://sure.day/llms-full.txt): All reference text and tool schemas in one fetch.
+
+## Other public information
+
+- [Sure](https://sure.day/): Product home and waitlist.
+- [Privacy and data use](https://sure.day/privacy/): Public data-handling policy.
