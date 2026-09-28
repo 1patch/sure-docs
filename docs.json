@@ -50,6 +50,7 @@
       {
         "group": "Public contracts",
         "pages": [
+          "calendar",
           "projects",
           "configuration",
           "booking"

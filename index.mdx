@@ -21,18 +21,24 @@ to work on that one page.
 
 | You want to… | Use |
 | --- | --- |
+| Read private calendars, review source edits, or define labels | [Calendar MCP](/calendar) |
 | Edit copy, colors, availability, or intake questions | [Project MCP and configuration](/configuration) |
 | Build an entirely different frontend | [Sure-hosted Git and source files](/projects#hosted-git) |
 | Preview, commit, publish, or roll back | [Project MCP](/projects) |
 | Find a time, book, reschedule, or cancel | [Public booking RPC](/booking) |
 
-MCP and Git edit the same project source. A Git push updates the draft. Publishing
+Project MCP and Git edit the same project source. A Git push updates the draft. Publishing
 is a separate action; the normal Sure Publish button commits a changed draft for
 you.
 
-## Two kinds of access
+## Choose the right access
 
-**The owner’s agent** uses a project token with
+**The owner's calendar agent** uses a calendar access token with
+`https://mcp.sure.day/mcp`. It can read that owner's connected sources. Applying
+event changes needs both an editable agent grant and separate source-management
+permission. [Connect a calendar agent](/calendar).
+
+**The owner's frontend agent** uses a project token with
 `https://app.sure.day/project-mcp` or that project’s Git remote. It can read and
 edit source, change scheduling policy, and publish. Keep the token in the agent’s
 secret configuration, never in public frontend code or a Git remote URL.
@@ -49,16 +55,17 @@ A pending operation is not a confirmed booking.
 ## Read these docs with an agent
 
 - [Project MCP and Git reference](/projects)
+- [Calendar MCP and source edits](/calendar)
 - [Frontend and scheduling configuration](/configuration)
 - [Booking RPC reference](/booking)
-- [MCP tool schemas](https://sure.day/docs/mcp-tools.json), generated from the implemented tool catalog;
+- [Project MCP tool schemas](https://sure.day/docs/mcp-tools.json), generated from the implemented project catalog;
   authenticated `tools/list` is authoritative.
 - [Agent index](https://sure.day/llms.txt) and
   [complete reference as text](https://sure.day/llms-full.txt).
 
 Mintlify’s documentation search MCP, if enabled for this site, searches these
-pages. To edit or publish a project, connect to Sure’s project MCP endpoint above
-with the owner’s project token.
+pages. It does not authorize either calendar or project operations. Calendar MCP
+and project MCP use separate endpoints, tokens, and tool catalogs.
 
 ## What is available today
 
@@ -68,6 +75,7 @@ creation, rescheduling, and cancellation of Sure-created Google Calendar booking
 after the owner selects a destination and grants booking write access.
 
 External project MCP does not expose private calendar reads, account connections,
-concierge conversations, memory, worker control, or voice. Those stay inside the
-signed-in Sure experience. Payments, team routing, webhooks, and arbitrary
-provider-event mutations are future possibilities, not current public contracts.
+concierge conversations, memory, worker control, or voice. Private calendar reads
+and supported source-event changes use the separate owner-authorized calendar MCP.
+Concierge conversations, memory, workers, and voice remain inside Sure. Payments,
+team routing, and webhooks are future possibilities, not current public contracts.
