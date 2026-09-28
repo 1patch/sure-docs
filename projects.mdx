@@ -1,0 +1,239 @@
+---
+title: "Projects, MCP, and Git"
+description: "Edit, version, preview, and publish a booking page with your own agent or Git tools."
+---
+
+Each booking page has editable HTML, CSS, JavaScript, a `sure.json` configuration file, and a Git remote hosted by Sure. The browser editor, MCP tools, and Git operate on the same source. Saving or pushing changes updates the draft; publishing is a separate action.
+
+Use [Configuration](/configuration) for the `sure.json` schema and [Booking RPC](/booking) for the public API a page calls to find and book time. For a first change, follow the [Quickstart](/quickstart).
+
+## Get access
+
+An invited owner signs in at [app.sure.day](https://app.sure.day), opens the Calendars settings gear, then **Booking pages**, and creates or selects a page. Under **Advanced → Agent access**, choose **Create access token**. Copy the token once and save it in your agent's secret configuration or a secure credential manager.
+
+The same token authorizes MCP and Git for that one project, including publication and rollback. It does not grant access to other projects, private calendar events, account connections, agent memory, or booking records. **Revoke project tokens** in the owner UI revokes all tokens for that project.
+
+This is manual project-token authentication. There is no OAuth onboarding or automatic client registration for this endpoint. Use the owner UI to create a project and issue or revoke its tokens; an external project MCP client cannot bootstrap its own access.
+
+All capitalized values in examples below are placeholders. Never put a token in source, a commit, a remote URL, a public frontend, or logs. An agent that needs a token should use its secret configuration rather than asking for it in a public conversation.
+
+## MCP connection
+
+Endpoint: `https://app.sure.day/project-mcp`
+
+Send JSON-RPC 2.0 requests over HTTPS `POST`, with these headers:
+
+```http
+Authorization: Bearer <PROJECT_ACCESS_TOKEN>
+Content-Type: application/json
+```
+
+The owner UI provides the endpoint and authorization configuration for your MCP client. Send one request object per body; batch arrays are unsupported. This endpoint returns JSON responses; it does not provide a `GET` event stream or require an `Mcp-Session-Id`. Authenticated `DELETE` returns `200` without revoking the token.
+
+Initialize:
+
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 1,
+  "method": "initialize",
+  "params": {
+    "protocolVersion": "2025-03-26",
+    "capabilities": {},
+    "clientInfo": { "name": "example-agent", "version": "1.0.0" }
+  }
+}
+```
+
+The response is:
+
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 1,
+  "result": {
+    "protocolVersion": "2025-03-26",
+    "capabilities": { "tools": {} },
+    "serverInfo": { "name": "sure-projects", "version": "1.0.0" }
+  }
+}
+```
+
+Send `notifications/initialized` after initialization; notifications receive `202` with no response body. `ping` returns an empty result object. Discover the current tool schemas with:
+
+```json
+{ "jsonrpc": "2.0", "id": 2, "method": "tools/list", "params": {} }
+```
+
+The response's `result.tools` array contains each tool's `name`, `description`, and `inputSchema`.
+
+The [static tool schemas](/mcp-tools.json) are also available without authentication. They describe the API; making project requests still requires a project token.
+
+Call a tool by its exact underscore-separated name:
+
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 3,
+  "method": "tools/call",
+  "params": { "name": "project_get", "arguments": {} }
+}
+```
+
+The token selects the project. Do not supply `projectId`; it is omitted from the advertised tool schemas. A supplied ID for another project is rejected.
+
+### Results and revisions
+
+A successful tool call returns its value as JSON encoded inside a text content item:
+
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 4,
+  "result": {
+    "content": [
+      {
+        "type": "text",
+        "text": "{\"revision\":\"SOURCE_REVISION\",\"previewUrl\":\"PREVIEW_URL\",\"expiresAt\":0}"
+      }
+    ]
+  }
+}
+```
+
+This example shows the `project_preview` result shape; the server supplies the real revision, URL, and expiration. Check `result.isError` before parsing `result.content[0].text` as JSON.
+
+`project_get` returns the project overview. All successful source, commit, pull, publish, and rollback tools also return this overview:
+
+| Field | Meaning |
+| --- | --- |
+| `id`, `name` | Project identity and display name. |
+| `files` | Map of relative file paths to their full text contents. |
+| `config` | Validated configuration from `sure.json`. |
+| `revision` | Current source revision: a 64-character content hash. |
+| `committed` | Whether the current draft matches the committed source. |
+| `gitCommit` | Git commit associated with this source, when present. A dirty draft may omit it. |
+| `repository` | `{ "url": "GIT_REMOTE_URL", "branch": "main", "head": "GIT_COMMIT_SHA" }`. |
+| `publishedRevision` | Published source revision, or `null` before publication. It can differ from `revision`. |
+| `publicUrl` | The page's stable public URL, or `null` if hosting is unavailable. Before the first publication, the page is not available at this URL. |
+| `releases` | Recorded releases, each with `revision`, `gitCommit`, and `publishedAt`. Up to 50 are retained in this list. |
+| `appOrigin` | Origin of the Sure app and public booking API. |
+
+Times such as `publishedAt` and `expiresAt` are Unix milliseconds. Other fields may be returned; clients should ignore fields they do not use.
+
+**`expectedRevision` is the source `revision`, not the Git commit SHA.** Treat it as an opaque value returned by Sure. Read current state, make your intended change, and use the returned revision for the next operation. A stale revision fails instead of overwriting someone else's edits. Read again and reconcile the changes before retrying.
+
+### Available tools
+
+| Tool | Arguments | Effect |
+| --- | --- | --- |
+| `project_get` | `{}` | Read the current draft, Git state, and releases. |
+| `project_edit` | `expectedRevision`, `files` | Save a file patch. Each value is the complete replacement text; `null` deletes that file. Omitted files are preserved. |
+| `project_configure` | `expectedRevision`, `patch` | Patch `sure.json` and validate the resulting configuration. Objects merge recursively; arrays replace their previous values. |
+| `project_commit` | `expectedRevision`, `message` | Commit the draft to hosted `main`. Use a nonempty message of at most 300 characters. An already committed draft is returned unchanged. |
+| `project_pull` | `expectedRevision`, optional `discardLocalChanges` | Restore the draft from hosted `main`. Dirty drafts are rejected unless `discardLocalChanges` is explicitly `true`. |
+| `project_preview` | `{}` | Return `{ revision, previewUrl, expiresAt }` for the exact current source. The link expires after one hour. |
+| `project_publish` | `expectedRevision` | Publish the current committed source. Uncommitted drafts are rejected. |
+| `project_rollback` | `revision` | Point the public page to a revision from `releases`. Does not alter the draft, Git history, or existing bookings. |
+
+These are the complete external project tools. There is no `calendar_read`, `project_create`, `project_list`, `project_checkout`, or token-management tool on this endpoint. Configuring a page does not grant calendar connection or booking-calendar administration access.
+
+### Edit, preview, commit, publish
+
+1. Call `project_get` and retain its `revision` and source.
+2. Make a focused change with `project_edit` or `project_configure`.
+3. Call `project_preview` and inspect the result. It captures a fixed revision; later edits do not update that preview. Keep the preview URL private: possession of the link grants access until it expires.
+4. Call `project_commit` with the current revision and a useful message.
+5. Call `project_publish` with the current revision. Verify the returned `publishedRevision` and public URL.
+
+For example, after reading the source, a configuration change uses:
+
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 5,
+  "method": "tools/call",
+  "params": {
+    "name": "project_configure",
+    "arguments": {
+      "expectedRevision": "SOURCE_REVISION",
+      "patch": { "copy": { "heading": "Let's find a time" } }
+    }
+  }
+}
+```
+
+The owner's **Publish** button automatically commits a dirty draft before publishing. MCP publication deliberately requires the explicit `project_commit` step. A preview is not a publication and does not make unpublished scheduling rules available to bookers.
+
+### Errors
+
+Invalid or revoked credentials return HTTP `401`. Unsupported HTTP methods return `405`. A browser request with an unrelated `Origin` is rejected with `403`.
+
+Malformed JSON-RPC request objects return HTTP `400` with JSON-RPC code `-32600`. Unknown JSON-RPC methods return code `-32601`. A tool failure, including a stale revision or unknown tool name, normally returns HTTP `200` with `result.isError: true`:
+
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 5,
+  "result": {
+    "isError": true,
+    "content": [
+      { "type": "text", "text": "This project changed. Read its current revision before editing." }
+    ]
+  }
+}
+```
+
+Tool errors contain a human-readable message, not a structured HTTP status field. Do not interpret HTTP `200` alone as success. HTTP `413` means the request is too large; `429` means to back off and honor `Retry-After` when supplied. Malformed JSON can be rejected before JSON-RPC handling, so clients must also handle non-JSON-RPC HTTP errors.
+
+## Hosted Git
+
+Copy the HTTPS remote from **Advanced → Git repository**, or read `repository.url` from `project_get`. Its form is:
+
+```text
+https://app.sure.day/git/projects/PROJECT_ID.git
+```
+
+Use username **`sure`** and the project token as the password when Git prompts. HTTPS Basic authentication is supported; integrations can alternatively supply `Authorization: Bearer <PROJECT_ACCESS_TOKEN>`. Keep credentials outside the remote URL. Configure a secure Git credential helper with credentials scoped to the repository path when working on multiple Sure projects.
+
+```sh
+git -c credential.useHttpPath=true clone https://app.sure.day/git/projects/PROJECT_ID.git booking-page
+cd booking-page
+git config credential.useHttpPath true
+git pull --ff-only origin main
+# Edit the frontend files.
+git add index.html style.css sure.json
+git commit -m "Update booking page"
+git push origin main
+```
+
+Replace `PROJECT_ID` with your project's ID. The remote accepts fast-forward updates to the existing `main` branch. Additional branches, tags, branch deletion, and forced history rewrites are rejected. Successful pushes preserve Git history and update the Sure draft as committed source; they do not publish it. Read the resulting `revision` with MCP before publishing.
+
+If someone has committed new work to `main`, fetch and integrate it locally, then push again. For example, `git pull --rebase origin main` can replay your local commits on the latest shared history. Resolve any conflicts; do not force-push around them.
+
+A push is also rejected while the browser or MCP has uncommitted draft edits. Preserve those edits by committing them in Sure or with `project_commit`, then pull and reconcile before pushing. `project_pull` means importing the hosted branch into the Sure draft, not pulling into your local checkout. Only use `discardLocalChanges: true` when the owner has authorized replacing that draft.
+
+Git authentication failures return `401`; a token for another project returns `404`. Draft conflicts return `409`. Invalid pushed source or history is rejected by Git without accepting a new remote commit. Keep local work and resolve the reported problem before retrying.
+
+### Export once to GitHub
+
+Create an empty repository in your own GitHub account or organization, then run these commands in your local Sure clone using your own GitHub authentication:
+
+```sh
+git remote add github https://github.com/OWNER/REPOSITORY.git
+git push github main
+```
+
+This exports the current branch and its history. It does not configure synchronization. `origin` remains the Sure remote; changes made only on GitHub do not update the Sure draft or public page.
+
+## Current source and transport limits
+
+- Keep `index.html` and a valid `sure.json` in the source. A project supports 1–100 text files, up to 250,000 bytes each and 2,000,000 bytes total.
+- Supported extensions are `.html`, `.css`, `.js`, `.json`, `.md`, `.svg`, and `.txt`. Use relative ASCII paths up to 180 characters, made from letters, digits, `_`, `-`, `.`, and `/`, starting with a letter or digit. Empty, `.` and `..` path segments and hidden names are rejected.
+- Paths inside `memory`, `node_modules`, `credentials`, or `secrets` directories are rejected. Keep provider credentials, tokens, private calendar links, private memory, and personal calendar data out of the frontend source.
+- Git source must be UTF-8 text. Symlinks, executable file modes, submodules, and NUL bytes are rejected. Every newly introduced commit is validated: removing a forbidden file or credential in a later commit does not make the earlier unsafe commit acceptable.
+- The frontend is served as source files; it has no package installation or build step. Produce supported files locally before committing them.
+- Git requests and repository history are capped at 32 MiB, including expanded object data. Histories support up to 51,219 reachable objects; commit and tree objects are each limited to 256,000 bytes. Git operations have a 30-second time limit. A long history can reach these limits even when the current draft is small.
+- MCP JSON request bodies are limited to 2,500 KiB. Git and MCP each allow up to 120 requests per minute per client IP; Git also limits concurrent operations. Back off on `429`.
+
+For scheduling rules, theme fields, copy, and booking questions, continue with [Configuration](/configuration). For a custom page's public scheduling calls, use [Booking RPC](/booking).

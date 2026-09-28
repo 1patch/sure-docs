@@ -1,0 +1,231 @@
+---
+title: "Public booking API"
+description: "Find times, create bookings, and manage them with scoped capabilities."
+---
+
+Use this API to find times and create, inspect, move, or cancel a booking made through a Sure booking page. Project source, Git, publication, and MCP editing are documented in [Projects](/projects). Scheduling rules, forms, and the hosted frontend runtime are documented in [Configuration](/configuration).
+
+All identifiers, dates, people, and tokens below are synthetic examples or placeholders. Replace `PROJECT_ID`, `SLOT_TOKEN`, and `MANAGEMENT_TOKEN` with values returned for your page. Do not invent a slot token or build a management token yourself.
+
+## Before a page can accept bookings
+
+The owner must publish a booking page and choose a writable Google destination in **Calendars → Booking pages → the page → Booking calendar**. Connecting a read-only calendar or iCalendar feed is not booking consent. The owner must grant Google booking access and save a writable calendar as the destination.
+
+The public API does not configure that destination or grant provider access. It operates only on Sure bookings. It is not an API for arbitrary calendar event writes, RSVP changes, payment collection, or a promised email delivery service.
+
+Availability requires successful checks of the owner's connected calendars. An unavailable calendar is an error, not evidence of free time. Responses expose bookable times, not the owner's calendar events or private source records.
+
+## HTTP contract
+
+Send JSON to:
+
+```text
+POST https://app.sure.day/booking-rpc
+Content-Type: application/json
+```
+
+```json
+{
+  "operation": "slots",
+  "args": {
+    "projectId": "PROJECT_ID",
+    "date": "2030-04-08",
+    "timezone": "America/New_York"
+  }
+}
+```
+
+Successful responses are ordinary JSON objects at the top level. There is no JSON-RPC envelope and no `result` wrapper. The five supported operations are `slots`, `book`, `get`, `move`, and `cancel`.
+
+Public `slots` and `book` requests need no owner session or project Git/MCP token. `book` requires a slot capability returned by `slots`; `get`, `move`, and `cancel` require a booking management capability. Use `credentials: "omit"` in a browser. Never place an owner's Git/MCP credential in public frontend code.
+
+```js
+async function bookingRpc(operation, args) {
+  const response = await fetch('https://app.sure.day/booking-rpc', {
+    method: 'POST',
+    credentials: 'omit',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ operation, args }),
+  });
+  const body = await response.json().catch(() => null);
+  if (!response.ok) {
+    throw new Error(body?.error ?? `Booking request failed (${response.status})`);
+  }
+  return body;
+}
+```
+
+Browser CORS currently allows the Sure app origin, `https://app.sure.day`, and its configured hosted-page origin, currently `https://pages.sure.day`. Arbitrary external website origins are not enabled. `OPTIONS` is supported for approved origins, with `Content-Type` as the allowed request header. A server client can call the endpoint without an `Origin` header. Sure-hosted pages also restrict framing to the Sure app; publishing a page does not enable arbitrary third-party iframe embedding.
+
+The request body limit is 64 KiB (65,536 bytes). The endpoint currently allows 40 requests per minute per client IP, shared across operations and preflight requests. Handle `429`, respect `Retry-After` when present, and use backoff. Treat rate limits as operational limits that may change; avoid polling every second.
+
+## `slots`: find times for one day
+
+Required arguments:
+
+| Field | Type | Meaning |
+| --- | --- | --- |
+| `projectId` | string | The published page's project ID. |
+| `date` | string | A real date in `YYYY-MM-DD` format. |
+| `timezone` | string | A valid timezone name, such as `America/New_York`, defining the requested day. Maximum 100 characters. |
+
+Optional argument:
+
+| Field | Type | Meaning |
+| --- | --- | --- |
+| `manageToken` | string | Management token for a booking on this same page, when finding a replacement time. Excludes that booking's own reservation and provider event from conflicts. |
+
+This is a one-day query, not a search starting on that date. Query another date to display another day. The complete meeting must fit within the requested day. Local daylight-saving transitions determine the actual start and end of that day.
+
+```json
+{
+  "slots": [
+    {
+      "start": "2030-04-08T13:00:00.000Z",
+      "end": "2030-04-08T13:25:00.000Z",
+      "token": "SLOT_TOKEN"
+    }
+  ],
+  "timezone": "America/New_York",
+  "revision": "PUBLISHED_SOURCE_REVISION"
+}
+```
+
+`start` and `end` are ISO instants in UTC. The response's `timezone` is the **page's configured timezone**, which may differ from the timezone used to request the day. Display the returned instants in the booker's preferred timezone; send the returned token unchanged. Account for repeated local clock times when displaying daylight-saving transitions.
+
+The slot list may be empty. Slot tokens expire after ten minutes and bind the page, published source revision, and start time. They do not reserve a time. The server checks current rules and conflicts again when a booking or move is submitted. A publication or rollback to another source revision can invalidate an unused token; request fresh slots after a stale-token or conflict response.
+
+## `book`: create a booking
+
+```json
+{
+  "operation": "book",
+  "args": {
+    "projectId": "PROJECT_ID",
+    "slot": "SLOT_TOKEN",
+    "name": "Example Booker",
+    "email": "booker@example.com",
+    "answers": { "topic": "A first conversation" },
+    "idempotencyKey": "a-unique-booking-request-001"
+  }
+}
+```
+
+| Field | Required | Rules |
+| --- | --- | --- |
+| `projectId` | yes | Same published page used for the slot query. |
+| `slot` | yes | Opaque token from a returned slot; do not substitute a timestamp or the whole slot object. |
+| `name` | yes | String, 1–200 characters before trimming; must remain nonempty after trimming. |
+| `email` | yes | String, 1–254 characters, trimmed and lowercased; must have a non-whitespace local part, `@`, and a dotted domain. |
+| `answers` | no | Object keyed by question IDs in `config.form.questions`; defaults to `{}`. Values must be strings of at most 2,000 characters. Required answers must remain nonempty after trimming. Send only configured question IDs. |
+| `idempotencyKey` | yes | String, 16–100 characters. Generate one per intended booking, for example with `crypto.randomUUID()`, and retain it for retries. |
+
+Strings must not contain NUL characters. Unknown answer IDs are not saved as form answers, but still participate in request matching; do not add or remove them during a retry.
+
+The response contains a booking and its private management link:
+
+```json
+{
+  "booking": {
+    "id": "BOOKING_ID",
+    "projectId": "PROJECT_ID",
+    "state": "confirmed",
+    "title": "A conversation",
+    "start": "2030-04-08T13:00:00.000Z",
+    "end": "2030-04-08T13:25:00.000Z",
+    "timezone": "America/New_York"
+  },
+  "manageUrl": "https://app.sure.day/booking/#token=MANAGEMENT_TOKEN"
+}
+```
+
+`state` can be `creating` instead of `confirmed`. A successful HTTP response with a pending state is not confirmation that the provider calendar has finished updating. Display a pending message and offer the management link.
+
+The idempotency key is scoped to the page. A retry with the same key must describe the same chosen start, trimmed name, normalized email, and trimmed answers. Reusing the key for a different request returns `409`. A matching accepted request returns the existing booking, including its current state, even if the original slot token has since expired. This recovery still requires the page and its destination to remain available. Never use a new key merely because the first response timed out.
+
+## Shared booking object and states
+
+Every booking response uses the same public shape: `id`, `projectId`, `state`, `title`, `start`, `end`, and `timezone`. It does not return the booker's name, email, answers, or owner calendar records.
+
+| State | Meaning for the frontend |
+| --- | --- |
+| `creating` | The request is accepted; provider creation is not yet confirmed. |
+| `confirmed` | The current calendar operation completed. |
+| `moving` | The new time is pending; returned `start`, `end`, and `timezone` describe the requested new time. |
+| `cancelling` | Cancellation is pending. Do not claim that the time is already cancelled or free. |
+| `cancelled` | Cancellation completed. |
+
+Pending operations retain reservations while the provider outcome is uncertain. While a move is pending, both the old and requested new times remain protected. Failures can remain pending; there is no guaranteed completion time. `get` reads status rather than starting another calendar operation. The supplied management UI polls pending bookings about every 15 seconds; use similar or slower polling with backoff on errors.
+
+## Management capability and `get`
+
+Anyone holding the management token can read the booking's public status, move it, or cancel it. Keep the token and the complete management link out of public source, analytics, logs, and unrelated third-party requests. The link uses a URL **fragment**, `#token=...`, rather than a query parameter. Preserve that format.
+
+Management tokens expire 730 days after the booking was created. They identify a specific booking; no owner login or separate `projectId` is required for `get`, `move`, or `cancel`.
+
+```json
+{
+  "operation": "get",
+  "args": { "token": "MANAGEMENT_TOKEN" }
+}
+```
+
+Response: `{ "booking": { ... } }`, using the shared booking shape. `get` does not return another management link.
+
+To read the fragment in a management frontend:
+
+```js
+const token = new URLSearchParams(location.hash.slice(1)).get('token');
+// Keep token private; send it only in the JSON body of the booking requests.
+```
+
+## `move`: reschedule a confirmed booking
+
+First call `slots` with the same page ID and `manageToken: MANAGEMENT_TOKEN` so the booking does not conflict with itself. Then submit:
+
+```json
+{
+  "operation": "move",
+  "args": {
+    "token": "MANAGEMENT_TOKEN",
+    "slot": "NEW_SLOT_TOKEN",
+    "idempotencyKey": "a-unique-move-request-0001"
+  }
+}
+```
+
+All three arguments are required. The slot must belong to the booking's page and follow its current published rules. The idempotency key has the same 16–100 character rule as `book`; it is a new key for this intended move, retained for retries.
+
+Response: `{ "booking": { ... } }`, normally `confirmed` or `moving`. The title stays the booking's original title. A new move requires `confirmed` state; a pending change returns `409` rather than starting another move.
+
+Retries of the **most recent move** with the same key and chosen start return its current outcome, including when that slot token has expired. A changed start with that key returns `409`. Only the most recent move key is remembered: do not replay an older move after a later move has been accepted. Check `get` after an uncertain outcome before initiating a different move.
+
+## `cancel`: cancel a booking
+
+```json
+{
+  "operation": "cancel",
+  "args": { "token": "MANAGEMENT_TOKEN" }
+}
+```
+
+`token` is the only required argument. No idempotency key is needed. Repeating cancellation is safe, including when it is already pending or finished. Cancellation may also be requested while creation or a move is pending.
+
+Response: `{ "booking": { ... } }`, with `cancelling` or `cancelled`. Keep checking a pending result using `get`. A cancelled booking cannot be moved into a new booking; start a new booking request if that is what the person wants.
+
+## Errors and uncertain outcomes
+
+Application errors normally use a non-2xx HTTP status and `{ "error": "Human-readable message" }`. Edge, CORS, method, or rate-limit errors may have a non-JSON body. Branch on the status and handle parse failure; do not depend on exact error wording.
+
+| Status | Typical cause and response |
+| --- | --- |
+| `400` | Invalid date, input, required answer, or request body. Correct the request. |
+| `403` | Invalid, expired, or wrong-page capability, or an unapproved browser origin. Obtain the appropriate capability; do not bypass origin restrictions. |
+| `404` | Missing/unavailable booking page or booking, or unknown operation. |
+| `405` | Unsupported method or missing/wrong JSON content type. |
+| `409` | Taken or stale slot, changed published rules, reused request key with different input, pending operation, or missing writable-calendar setup. Read current state or fresh availability; owner setup issues require the owner. |
+| `413` | Request body exceeds the size limit. |
+| `429` | Too many requests. Respect retry timing and back off. |
+| `503` | Availability or another dependency cannot currently be checked. Do not interpret this as an empty/free calendar. |
+
+A network timeout or interrupted response does not prove that a mutation failed. For `book`, retry the same logical request with the same idempotency key. Once you have the management token, use `get` to resolve uncertainty. For `move`, preserve its key and chosen start; for `cancel`, reuse the same management token. Never label pending work confirmed, and never create a second booking merely to recover a missing response.

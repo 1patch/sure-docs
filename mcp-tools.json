@@ -1,0 +1,141 @@
+{
+  "tools": [
+    {
+      "name": "project_get",
+      "description": "Read canonical source, configuration, current revision, repository, and releases. Never includes credentials or private memory.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {},
+        "required": [],
+        "additionalProperties": false
+      }
+    },
+    {
+      "name": "project_edit",
+      "description": "Change ordinary frontend source files using an optimistic revision. A file value of null deletes it. sure.json contains scheduling and theme configuration.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "expectedRevision": {
+            "type": "string"
+          },
+          "files": {
+            "type": "object",
+            "additionalProperties": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          }
+        },
+        "required": [
+          "expectedRevision",
+          "files"
+        ],
+        "additionalProperties": false
+      }
+    },
+    {
+      "name": "project_configure",
+      "description": "Patch scheduling rules, theme, copy, or questions in the canonical sure.json source. Values are validated before saving.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "expectedRevision": {
+            "type": "string"
+          },
+          "patch": {
+            "type": "object"
+          }
+        },
+        "required": [
+          "expectedRevision",
+          "patch"
+        ],
+        "additionalProperties": false
+      }
+    },
+    {
+      "name": "project_pull",
+      "description": "Restore the draft from this project’s Sure-hosted Git main branch. Rejects uncommitted draft edits unless discardLocalChanges is explicitly authorized; previous revisions are retained.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "expectedRevision": {
+            "type": "string"
+          },
+          "discardLocalChanges": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "expectedRevision"
+        ],
+        "additionalProperties": false
+      }
+    },
+    {
+      "name": "project_commit",
+      "description": "Commit the current source to this project’s Sure-hosted Git remote. Git pushes and MCP edits share this source and revision checks prevent overwriting concurrent work.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "expectedRevision": {
+            "type": "string"
+          },
+          "message": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "expectedRevision",
+          "message"
+        ],
+        "additionalProperties": false
+      }
+    },
+    {
+      "name": "project_preview",
+      "description": "Create a short-lived preview URL for the exact current source revision. No public release changes.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {},
+        "required": [],
+        "additionalProperties": false
+      }
+    },
+    {
+      "name": "project_publish",
+      "description": "Publish the exact current, committed source revision to the project public URL.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "expectedRevision": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "expectedRevision"
+        ],
+        "additionalProperties": false
+      }
+    },
+    {
+      "name": "project_rollback",
+      "description": "Restore a previously published frontend/configuration release. This never changes or cancels bookings.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "revision": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "revision"
+        ],
+        "additionalProperties": false
+      }
+    }
+  ]
+}

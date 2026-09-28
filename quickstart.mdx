@@ -1,0 +1,120 @@
+---
+title: "Quickstart"
+description: "Make one change to a booking page, save a Git commit, preview it, and publish it."
+---
+
+Use your own MCP-capable agent to change a booking page's heading. The same workflow applies to its HTML, CSS, JavaScript, scheduling rules, and questions.
+
+## 1. Get a project token
+
+An invited owner signs in at [app.sure.day](https://app.sure.day), opens the Calendars settings gear, then **Booking pages**, and creates or selects a page. Under **Advanced → Agent access**, choose **Create access token**. Save it in your agent's secret configuration; it is shown only once.
+
+Connect your agent to `https://app.sure.day/project-mcp` with an `Authorization: Bearer <PROJECT_ACCESS_TOKEN>` header. Replace the placeholder through your client's secret settings. Keep the token out of source files, remote URLs, commits, and logs.
+
+**The documentation search MCP and project MCP are different.** The docs site's search MCP helps find documentation. The app's authenticated project MCP reads and changes your selected page. Documentation access alone does not authorize project operations.
+
+Your MCP client should initialize with protocol version `2025-03-26` and discover the tools with `tools/list`. See the [connection contract](/projects#mcp-connection) and [tool schemas](/mcp-tools.json) if configuring a client manually. The token selects one existing project; there is no project creation or token-management tool on this endpoint.
+
+## 2. Read the page
+
+Call `project_get` with empty arguments:
+
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 1,
+  "method": "tools/call",
+  "params": { "name": "project_get", "arguments": {} }
+}
+```
+
+Successful tool results contain JSON in `result.content[0].text`. Check `result.isError` before parsing it. Retain the returned `revision`, `files`, and `config`.
+
+`revision` is the source version used for edits. It is not `gitCommit`, which is a Git commit SHA. Use the current source revision for every `expectedRevision` below.
+
+## 3. Change the heading
+
+Call `project_configure` using the revision from the read:
+
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 2,
+  "method": "tools/call",
+  "params": {
+    "name": "project_configure",
+    "arguments": {
+      "expectedRevision": "SOURCE_REVISION_FROM_GET",
+      "patch": { "copy": { "heading": "Let's find a time" } }
+    }
+  }
+}
+```
+
+Save the new `revision` from the result. This changes `sure.json` in the draft. The starter page displays this heading; a custom frontend must use that configuration field to display it.
+
+For a source change instead, call `project_edit` with `expectedRevision` and a `files` map. Each supplied value replaces that whole file; omitted files stay unchanged. Use `null` only for a file you intend to delete. Keep `index.html` and a valid `sure.json`.
+
+## 4. Commit the draft
+
+Call `project_commit` with the latest revision:
+
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 3,
+  "method": "tools/call",
+  "params": {
+    "name": "project_commit",
+    "arguments": {
+      "expectedRevision": "SOURCE_REVISION_FROM_CONFIGURE",
+      "message": "Update booking page heading"
+    }
+  }
+}
+```
+
+The response includes `committed: true` and `gitCommit`. Committing saves history; it does not publish the page.
+
+## 5. Preview the result
+
+Call `project_preview` with empty arguments:
+
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 4,
+  "method": "tools/call",
+  "params": { "name": "project_preview", "arguments": {} }
+}
+```
+
+Open the returned `previewUrl` and check the heading and layout. The preview captures a fixed `revision` and expires after one hour. Keep the link private. If its revision differs from the commit you intended to review, read current state and reconcile the intervening changes before publishing.
+
+## 6. Publish the reviewed revision
+
+When the page is ready, call `project_publish` with the source revision you reviewed:
+
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 5,
+  "method": "tools/call",
+  "params": {
+    "name": "project_publish",
+    "arguments": { "expectedRevision": "SOURCE_REVISION_YOU_PREVIEWED" }
+  }
+}
+```
+
+Check that `publishedRevision` equals the reviewed revision, then open the returned `publicUrl`. Existing bookings are unchanged. Accepting new bookings also requires the owner to connect and choose a booking calendar in Sure; see [Booking RPC](/booking).
+
+The browser's **Publish** button automatically commits a dirty draft. MCP requires the explicit commit step shown above.
+
+## If the page changed while you worked
+
+A stale revision is rejected. Call `project_get`, compare the current files with your intended edit, and retry with the new revision only after reconciling them. Do not blindly retry with a newer value.
+
+If you need to restore a public version, read `releases` and call `project_rollback` with one of its `revision` values. This changes the published page without altering the draft, Git history, or existing bookings.
+
+For local coding tools, use the [hosted Git workflow](/projects#hosted-git). For more page settings, use the [configuration reference](/configuration).

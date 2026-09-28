@@ -1,0 +1,73 @@
+---
+title: "Build with Sure"
+description: "Your calendar, your frontend, your way of organizing time."
+---
+
+Sure provides calendar building blocks for people, companies, and their agents.
+Automate what you want to automate. Control what you want to control.
+
+Start with a simple booking page. Change its copy, availability, or questions
+through MCP. Give your coding agent a normal Git remote to reshape the entire
+frontend. Preview your work, then publish when you want it live.
+
+These initial public contracts describe shipped behavior, reviewed September 28,
+2026. Account access currently requires an invitation.
+
+## Start small
+
+Follow the [quickstart](/quickstart) to connect an agent and publish one change.
+The owner creates a page and project token inside Sure; the agent uses that token
+to work on that one page.
+
+| You want to… | Use |
+| --- | --- |
+| Edit copy, colors, availability, or intake questions | [Project MCP and configuration](/configuration) |
+| Build an entirely different frontend | [Sure-hosted Git and source files](/projects#hosted-git) |
+| Preview, commit, publish, or roll back | [Project MCP](/projects) |
+| Find a time, book, reschedule, or cancel | [Public booking RPC](/booking) |
+
+MCP and Git edit the same project source. A Git push updates the draft. Publishing
+is a separate action; the normal Sure Publish button commits a changed draft for
+you.
+
+## Two kinds of access
+
+**The owner’s agent** uses a project token with
+`https://app.sure.day/project-mcp` or that project’s Git remote. It can read and
+edit source, change scheduling policy, and publish. Keep the token in the agent’s
+secret configuration, never in public frontend code or a Git remote URL.
+
+**The booker or their agent** uses `https://app.sure.day/booking-rpc`. Reading
+slots and creating a booking require no owner login. Changing an existing booking
+requires its private management token. Availability does not expose event titles
+or attendees.
+
+Use the direction the owner or booker has given you. After a timeout, check the
+current state and reuse the same idempotency key for the same booking request.
+A pending operation is not a confirmed booking.
+
+## Read these docs with an agent
+
+- [Project MCP and Git reference](/projects)
+- [Frontend and scheduling configuration](/configuration)
+- [Booking RPC reference](/booking)
+- [MCP tool schemas](/mcp-tools.json), generated from the implemented tool catalog;
+  authenticated `tools/list` is authoritative.
+- [Agent index](https://sure.day/llms.txt) and
+  [complete reference as text](https://sure.day/llms-full.txt).
+
+Mintlify’s documentation search MCP, if enabled for this site, searches these
+pages. To edit or publish a project, connect to Sure’s project MCP endpoint above
+with the owner’s project token.
+
+## What is available today
+
+Projects host static HTML, CSS, and JavaScript with one scheduling offer per
+project. Git accepts fast-forward updates to `main`. Public booking supports
+creation, rescheduling, and cancellation of Sure-created Google Calendar bookings
+after the owner selects a destination and grants booking write access.
+
+External project MCP does not expose private calendar reads, account connections,
+concierge conversations, memory, worker control, or voice. Those stay inside the
+signed-in Sure experience. Payments, team routing, webhooks, and arbitrary
+provider-event mutations are future possibilities, not current public contracts.

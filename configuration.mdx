@@ -1,0 +1,206 @@
+---
+title: "Configuration and runtime"
+description: "Configure availability, forms, styling, and your hosted booking frontend."
+---
+
+A Sure project contains ordinary HTML, CSS, and JavaScript plus `sure.json`. The JSON file defines the scheduling rules and the starter frontend's presentation. It is validated when source is saved or imported. See [Projects](/projects) for Git, MCP, previews, publishing, and rollback, and [Booking](/booking) for the public booking API.
+
+## A complete valid `sure.json`
+
+This example is synthetic. Exception dates are examples, not holidays inferred by Sure. All top-level sections shown here are required; there is no implicit defaulting of missing sections.
+
+```json
+{
+  "version": 1,
+  "timezone": "America/New_York",
+  "availability": {
+    "weekly": [
+      { "days": [1, 2, 3, 4, 5], "start": "09:00", "end": "12:00" },
+      { "days": [1, 3], "start": "14:00", "end": "17:00" }
+    ],
+    "exceptions": [
+      { "date": "2030-01-01", "windows": [] },
+      { "date": "2030-01-02", "windows": [{ "start": "10:00", "end": "14:00" }] }
+    ]
+  },
+  "offer": {
+    "title": "A conversation",
+    "durationMinutes": 25,
+    "bufferMinutes": 15,
+    "minimumNoticeMinutes": 1440,
+    "horizonDays": 30
+  },
+  "theme": {
+    "background": "#f8f7f3",
+    "foreground": "#203b32",
+    "accent": "#214c3d",
+    "fontFamily": "Manrope, system-ui, sans-serif"
+  },
+  "copy": {
+    "heading": "Time for a conversation",
+    "introduction": "Choose a time that works for you.",
+    "bookingLabel": "Book a conversation"
+  },
+  "form": {
+    "questions": [
+      { "id": "topic", "label": "What would you like to discuss?", "type": "textarea", "required": true },
+      { "id": "context", "label": "Anything else to know?", "type": "text", "required": false }
+    ]
+  }
+}
+```
+
+## Schema and limits
+
+Numeric fields below must be JSON integers, not numeric strings. Strings cannot contain NUL characters. String length limits use JavaScript string length; for most text that is the character count, while some Unicode characters occupy two code units.
+
+| Field | Rules |
+| --- | --- |
+| `version` | Exactly `1`. |
+| `timezone` | Valid timezone recognized by the runtime, such as `UTC` or an IANA name; 1–100 characters. |
+| `availability.weekly` | Array of 0–28 windows. |
+| Weekly `days` | 1–7 distinct integers per window: Monday `1` through Sunday `7`. |
+| Window `start`, `end` | Zero-padded `HH:MM`, from `00:00` through `23:59`. Start must be earlier than end on the same day; `24:00` and overnight windows are not supported. |
+| `availability.exceptions` | Array of 0–366 entries, with one entry per date. |
+| Exception `date` | Real date in `YYYY-MM-DD` format. |
+| Exception `windows` | Array of 0–8 windows using the same start/end rules. |
+| `offer.title` | 1–200 characters. |
+| `offer.durationMinutes` | Integer, 5–480. |
+| `offer.bufferMinutes` | Integer, 0–240. |
+| `offer.minimumNoticeMinutes` | Integer, 0–43,200. |
+| `offer.horizonDays` | Integer, 1–365. |
+| `theme.background`, `theme.foreground`, `theme.accent` | Six-digit hex colors, for example `#214c3d`. Three-digit hex, alpha, named colors, and CSS expressions are not accepted here. |
+| `theme.fontFamily` | 1–100 characters. The starter uses this as a CSS font-family value; it does not download fonts. |
+| `copy.heading` | 1–200 characters. |
+| `copy.introduction` | 0–4,000 characters; an empty string is allowed. |
+| `copy.bookingLabel` | 1–100 characters. |
+| `form.questions` | Array of 0–12 questions. |
+| Question `id` | Unique, 1–60 characters, matching `^[a-z][a-z0-9_-]*$`. |
+| Question `label` | 1–300 characters. |
+| Question `type` | Exactly `text` or `textarea`. |
+| Question `required` | JSON boolean. |
+
+Unknown properties do not add backend capabilities. Use the documented shape; the validated runtime configuration contains the supported fields. A custom frontend may add its own separate source files and choose how to present the supported configuration.
+
+## Scheduling semantics
+
+Weekly windows and exception dates are interpreted in `timezone`, independent of the timezone a booker uses to view dates. Multiple windows can apply to the same weekday. A matching exception **replaces every weekly window for that date**. `windows: []` closes that date; an empty `weekly` array offers only explicitly opened exception dates.
+
+A booking must fit entirely within one window and stay on the same configured local date. Adjacent windows are not automatically merged. Candidate starts occur every 15 minutes from each window's start: a window beginning at `09:10` permits starts such as `09:10`, `09:25`, and `09:40`, subject to duration, notice, conflicts, and the requested day.
+
+Duration is elapsed time in minutes. Actual instants are checked through daylight-saving transitions; do not generate slots by adding fixed UTC offsets to local strings. Use the public API's returned `start`, `end`, and token. The API also requires the entire meeting to fit inside the day requested by the booker.
+
+Minimum notice is measured from the current instant. The booking's start must be before the current instant plus `horizonDays × 24 hours`; this is a rolling horizon, not a count of local calendar-date boundaries.
+
+Buffer is a minimum gap from busy time, before or after the booking. When another Sure booking also has a buffer, the larger buffer applies, rather than adding both buffers. Buffer is a conflict rule; it does not add to the displayed meeting duration or require the buffer itself to fit inside an availability window.
+
+The backend enforces scheduling and required form answers. Theme and copy guide the starter frontend; changing JavaScript or CSS can change its appearance, but does not bypass scheduling validation. Required question answers are trimmed nonempty strings, each at most 2,000 characters; see [Booking](/booking#book-create-a-booking).
+
+Draft configuration changes affect previews. Public booking uses the currently published configuration. Publication or rollback can invalidate unused slot tokens from another source revision. Changing configuration does not move or cancel existing bookings.
+
+## Source file constraints
+
+A source snapshot contains at most 100 files and 2,000,000 UTF-8 bytes in total. Each file is text, contains no NUL characters, and is at most 250,000 UTF-8 bytes. Keep nonempty `index.html` and `sure.json` at the project root.
+
+Paths are relative, at most 180 characters, begin with an ASCII letter or digit, and otherwise use ASCII letters, digits, `_`, `.`, `/`, or `-`. Empty segments, `.` or `..` segments, hidden path segments, and directories named `memory`, `node_modules`, `credentials`, or `secrets` are not allowed. Supported extensions are `.html`, `.css`, `.js`, `.json`, `.md`, `.svg`, and `.txt`.
+
+Keep credentials, private calendar links, private conversation or memory files, booking records, and form answers out of the repository. Source validation rejects known credential patterns; that is not a substitute for keeping secrets out of source. The repository is frontend source, not a secret store.
+
+No package installation or build step is required for the starter. Use relative asset URLs so the same source works under a published revision or a preview URL. `sure-runtime.json` and `sure-font.ttf` are supplied by hosting at the source directory; do not create project files with those names expecting to replace the hosted responses.
+
+## Hosted URLs and runtime JSON
+
+Use the `publicUrl` or `previewUrl` returned by the project API rather than constructing the host yourself. Current hosting uses the separate origin `https://pages.sure.day`.
+
+| URL shape | Behavior |
+| --- | --- |
+| `https://pages.sure.day/p/PROJECT_ID/` | Redirects to the currently published revision's `index.html`. Unpublished pages return `404`. |
+| `.../p/PROJECT_ID/r/REVISION/index.html` | Source from that retained published release. |
+| `.../p/PROJECT_ID/v/PREVIEW_CAPABILITY/index.html` | A specific draft snapshot. Preview capabilities expire after one hour; keep preview URLs private. |
+
+`REVISION` is a source revision returned by Sure, not a Git commit SHA. A preview is fixed to the source that was previewed; saving later edits does not change an already-open preview. Request a fresh preview after editing. Historical public URLs are available while that release is retained; do not assume unlimited release retention.
+
+From either directory, fetch the runtime beside your HTML:
+
+```js
+const response = await fetch('./sure-runtime.json', { credentials: 'omit' });
+if (!response.ok) throw new Error('This page is unavailable.');
+const runtime = await response.json();
+```
+
+The exact response shape is:
+
+```js
+{
+  appOrigin: 'https://app.sure.day',
+  projectId: 'PROJECT_ID',
+  revision: 'SOURCE_REVISION',
+  config: { /* complete validated sure.json configuration */ },
+  preview: false
+}
+```
+
+`preview` is always a boolean: `false` for a published release and `true` for a preview. This response contains no owner credentials, booking answers, management tokens, or private calendar events. `config` is the validated configuration, rather than a promise to preserve extra JSON properties or the original JSON formatting.
+
+Send public booking requests to `runtime.appOrigin + '/booking-rpc'` with `runtime.projectId`. A custom frontend must disable booking submissions when `runtime.preview` is true. The starter disables its search and booking buttons and labels the page as a preview. Preview source does not become the active booking policy: the public API always uses the currently published page, and there is no separate preview booking endpoint.
+
+Hosting serves `GET` and `HEAD`. Hosted code is isolated from the signed-in app's origin. Its content security policy allows scripts and styles from its own origin, including inline scripts/styles; connections can go to that origin and the Sure app. Objects, child frames, workers, and native form submissions are blocked. The page may only be framed by the Sure app. Use JavaScript booking RPC, not an HTML form action to another service. Arbitrary external script, font, analytics, or payment URLs are not enabled by default.
+
+The supplied `sure-font.ttf` is the starter's Manrope font. `theme.fontFamily` chooses fonts already available to the page or device; it does not relax hosting restrictions.
+
+## Optional private day in an owner preview
+
+A public visitor does not receive private calendar data. The signed-in Booking pages editor can explicitly send a simplified view of the owner's current day to an embedded preview after the owner chooses **Show my day here**. This is an optional UI message contract, not a public calendar-read API.
+
+First, the preview announces readiness to the containing editor:
+
+```js
+if (runtime.preview && window.parent !== window) {
+  window.parent.postMessage({
+    type: 'sure:ready',
+    projectId: runtime.projectId,
+    revision: runtime.revision,
+  }, runtime.appOrigin);
+}
+```
+
+The editor checks the preview origin, its exact iframe window, the project ID, and the current source revision before enabling the owner's action. Readiness alone does not send calendar data. If the source revision changed, open a fresh preview.
+
+After the owner's explicit action, the editor can send:
+
+```json
+{
+  "type": "sure:day",
+  "projectId": "PROJECT_ID",
+  "date": "2030-04-08",
+  "events": [
+    { "title": "Example appointment", "time": "9:00 AM – 9:30 AM" },
+    { "title": "Example all-day event", "time": "All day" }
+  ],
+  "coverage": "complete"
+}
+```
+
+`date` is today's date in the project's timezone. `events` contains only display titles and preformatted time labels; `time` is not an ISO timestamp or a stable format for calculations. The payload has no event IDs, provider records, credentials, descriptions, or management capabilities. `coverage` is `complete` or `incomplete`; an empty list with incomplete coverage must not be described as a guaranteed free day. The starter renders at most 200 entries.
+
+Check the sender and render text safely:
+
+```js
+window.addEventListener('message', event => {
+  if (!runtime.preview || event.origin !== runtime.appOrigin ||
+      event.source !== window.parent || event.data?.type !== 'sure:day' ||
+      event.data.projectId !== runtime.projectId) return;
+
+  const day = event.data;
+  if (!Array.isArray(day.events)) return;
+  const list = document.querySelector('#events');
+  list.replaceChildren();
+  for (const item of day.events.slice(0, 200)) {
+    const li = document.createElement('li');
+    li.textContent = `${String(item.time ?? '')} · ${String(item.title ?? '')}`;
+    list.append(li);
+  }
+});
+```
+
+Treat this payload as private, temporary display data. Do not commit it, embed it in a public page, or forward it to another service. The handshake does not grant the preview access to the app's authenticated APIs and does not make an anonymous public page calendar-aware.

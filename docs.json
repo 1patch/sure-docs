@@ -1,0 +1,96 @@
+{
+  "$schema": "https://mintlify.com/docs.json",
+  "name": "Sure",
+  "theme": "mint",
+  "description": "Calendar building blocks for people, companies, and their agents.",
+  "colors": {
+    "primary": "#214c3d",
+    "light": "#214c3d",
+    "dark": "#214c3d"
+  },
+  "appearance": {
+    "default": "light",
+    "strict": true
+  },
+  "background": {
+    "color": {
+      "light": "#f8f7f3",
+      "dark": "#f8f7f3"
+    }
+  },
+  "fonts": {
+    "heading": {
+      "family": "Manrope",
+      "source": "/fonts/manrope-bold.woff2",
+      "format": "woff2",
+      "weight": 700
+    },
+    "body": {
+      "family": "Manrope",
+      "source": "/fonts/manrope-regular.woff2",
+      "format": "woff2",
+      "weight": 400
+    }
+  },
+  "favicon": "/favicon.svg",
+  "logo": {
+    "light": "/logo.svg",
+    "dark": "/logo.svg",
+    "href": "https://sure.day"
+  },
+  "navigation": {
+    "groups": [
+      {
+        "group": "Build with Sure",
+        "pages": [
+          "index",
+          "quickstart"
+        ]
+      },
+      {
+        "group": "Public contracts",
+        "pages": [
+          "projects",
+          "configuration",
+          "booking"
+        ]
+      }
+    ]
+  },
+  "navbar": {
+    "links": [
+      {
+        "label": "Sure",
+        "href": "https://sure.day"
+      }
+    ],
+    "primary": {
+      "type": "button",
+      "label": "Sign in",
+      "href": "https://app.sure.day/auth/login"
+    }
+  },
+  "contextual": {
+    "options": [
+      "copy",
+      "view"
+    ]
+  },
+  "footer": {
+    "links": [
+      {
+        "header": "Sure",
+        "items": [
+          {
+            "label": "Privacy & data use",
+            "href": "https://sure.day/privacy/"
+          },
+          {
+            "label": "Say hello",
+            "href": "mailto:founders@onepatch.dev"
+          }
+        ]
+      }
+    ]
+  }
+}
