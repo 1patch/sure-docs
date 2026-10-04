@@ -45,7 +45,7 @@ The complete calendar tool names are:
 | `sure_connections` | Empty arguments. Lists source connections and their management permission; also reports the current time and that Reminders are unsupported. |
 | `sure_read` | Required `from`, `to`, `timezone`; optional `connectionId`. Reads a positive range of at most 31 elapsed days. Instants must include an offset; timezone must be valid. |
 | `sure_get` | Required `target`. Reads a current source item, provider revision, and Sure labels. |
-| `sure_prepare_change` | Required `target`, `expectedRevision`, `action`, `scope`, `notifications`, `reason`; optional `patch`. Returns an expiring before/after preview without applying it. |
+| `sure_prepare_change` | Required `target`, `expectedRevision`, `action`, `scope`, `notifications`, `reason`; optional `patch` and `response`. Returns an expiring before/after preview without applying it. |
 | `sure_apply_change` | Required `planId`, `digest`, `authority`. Applies the exact prepared preview using its creating connection. |
 | `sure_audit` | Optional `planId`. Returns recent edit summaries, or one plan's full before/after and outcome. |
 | `sure_labels` | Empty arguments. Reads the owner's custom taxonomy and its revision. |
@@ -54,6 +54,13 @@ The complete calendar tool names are:
 | `sure_skill` | Required `name`: `calendar-review`, `calendar-denoise`, `calendar-overlaps`, `calendar-close-loops`, or `calendar-labels`. |
 
 These tools differ from the eight `project_*` tools in the [project schema download](https://sure.day/docs/mcp-tools.json). The calendar endpoint's authenticated `tools/list` is authoritative for calendar schemas. The five recipes are also available through MCP prompts and resources at `sure://skills/NAME/SKILL.md`.
+
+Use `calendar-close-loops` to sweep unanswered invitations into **Accept for me**,
+**Reject**, or **Human decides**, with concise reasons based on your preferences
+and current calendar coverage. When you authorize sending, the skill sends obvious
+Google responses and leaves Human decides pending. A triage-only request produces
+recommendations. Repeated scheduled sweeps surface changed or time-sensitive
+decisions and completed responses.
 
 For example, read a day using synthetic dates:
 
@@ -106,7 +113,16 @@ Read the selected item with `sure_get`, retain its current `revision`, and prepa
 }
 ```
 
-Replace the source identifiers and revision with returned values. `action` is `update` or `delete`. An update needs a nonempty patch; a deletion uses an empty patch. Allowed patch fields are `title` (1–1,000 characters), `description` (up to 12,000), `location` (up to 2,000), `busy` (boolean), and timed `start` and `end`. Time changes require both instants, including offsets, and a positive duration. `reason` is 1–1,000 characters.
+Replace the source identifiers and revision with returned values. `action` is `update`, `delete`, or `respond`. An update needs a nonempty patch; a deletion uses an empty patch. Allowed patch fields are `title` (1–1,000 characters), `description` (up to 12,000), `location` (up to 2,000), `busy` (boolean), and timed `start` and `end`. Time changes require both instants, including offsets, and a positive duration. `reason` is 1–1,000 characters.
+
+For Google RSVP, read the current item and require `canRespond: true`. Prepare
+`action: "respond"`, `response: "accepted"` or `"declined"`, `patch: {}`,
+`notifications: "all"`, and `scope: "item"` or `"occurrence"`, using its current
+revision. Review and apply the returned digest under the user's actual authority.
+Only the connected Google identity's own pending response on its primary calendar
+can change. Other attendees and event details stay intact. Provider notifications
+are enabled; readback verifies the response, not delivery of an email. Whole-series
+RSVP and responses through iCloud, feeds or shared calendars are unsupported.
 
 Use `scope: "item"` for a nonrecurring event. For recurring Google events, select an `occurrence`, or read and target the `recurrence.seriesId` master before choosing `series`. Google requires an explicit notification choice of `none` or `all`. iCloud supports individual `occurrence` edits and requires `provider-default`; whole-series edits are unavailable.
 
@@ -126,7 +142,7 @@ Replaying the same plan does not dispatch it again. After a timeout, use `sure_a
 
 ## Provider and label boundaries
 
-Google supports existing-event title, description, location, timed start/end, busy/free, and deletion. iCloud supports these changes for personal events and individual recurring occurrences; invitations remain in the source app. Unsupported iCloud timezones or recurrence structures can make a read incomplete. Neither provider exposes event creation, RSVP changes, attendee-list changes, recurrence-rule changes, or all-day date changes through these tools. Reminders are not connected. Use the booking flow for Sure-managed bookings identified as nonwritable by the calendar tools.
+Google supports existing-event title, description, location, timed start/end, busy/free, deletion and the pending self RSVP described above. iCloud supports personal-event changes and individual recurring occurrences; invitations remain in the source app. Unsupported iCloud timezones or recurrence structures can make a read incomplete. Neither provider exposes event creation, attendee-list changes, recurrence-rule changes, or all-day date changes through these tools. Reminders are not connected. Use the booking flow for Sure-managed bookings identified as nonwritable by the calendar tools.
 
 Labels are Sure metadata. They do not change provider titles, colors, or busy/free state. A taxonomy holds up to 60 unique IDs matching `^[a-z][a-z0-9-]{0,49}$`; each label has `id`, `name` (1–80 characters), and `description` (up to 500). Optional `company` is up to 150 characters and gives context to this owner's taxonomy; it does not grant organization-wide access. Preserve stable IDs when revising the taxonomy. An item accepts up to 20 defined label IDs and a reason of 1–1,000 characters. Use the taxonomy's `revision` for `sure_define_labels`, and the item's `labelsRevision` for `sure_label_item`.
 
