@@ -58,7 +58,7 @@
     },
     {
       "name": "project_pull",
-      "description": "Restore the draft from this project’s Sure-hosted Git main branch. Rejects uncommitted draft edits unless discardLocalChanges is explicitly authorized; previous revisions are retained.",
+      "description": "Restore the draft from this project’s Sidekin-hosted Git main branch. Rejects uncommitted draft edits unless discardLocalChanges is explicitly authorized; previous revisions are retained.",
       "inputSchema": {
         "type": "object",
         "properties": {
@@ -77,7 +77,7 @@
     },
     {
       "name": "project_commit",
-      "description": "Commit the current source to this project’s Sure-hosted Git remote. Git pushes and MCP edits share this source and revision checks prevent overwriting concurrent work.",
+      "description": "Commit the current source to this project’s Sidekin-hosted Git remote. Git pushes and MCP edits share this source and revision checks prevent overwriting concurrent work.",
       "inputSchema": {
         "type": "object",
         "properties": {

@@ -1,9 +1,9 @@
 ---
-title: "Build with Sure"
+title: "Build with Sidekin"
 description: "Your calendar, your frontend, your way of organizing time."
 ---
 
-Sure provides calendar building blocks for people, companies, and their agents.
+Sidekin provides calendar building blocks for people, companies, and their agents.
 Automate what you want to automate. Control what you want to control.
 
 Start with a simple booking page. Change its copy, availability, or questions
@@ -16,34 +16,34 @@ These initial public contracts describe shipped behavior, reviewed September 28,
 ## Start small
 
 Follow the [quickstart](/quickstart) to connect an agent and publish one change.
-The owner creates a page and project token inside Sure; the agent uses that token
+The owner creates a page and project token inside Sidekin; the agent uses that token
 to work on that one page.
 
 | You want to… | Use |
 | --- | --- |
 | Read private calendars, review source edits, or define labels | [Calendar MCP](/calendar) |
 | Edit copy, colors, availability, or intake questions | [Project MCP and configuration](/configuration) |
-| Build an entirely different frontend | [Sure-hosted Git and source files](/projects#hosted-git) |
+| Build an entirely different frontend | [Sidekin-hosted Git and source files](/projects#hosted-git) |
 | Preview, commit, publish, or roll back | [Project MCP](/projects) |
 | Find a time, book, reschedule, or cancel | [Public booking RPC](/booking) |
 
 Project MCP and Git edit the same project source. A Git push updates the draft. Publishing
-is a separate action; the normal Sure Publish button commits a changed draft for
+is a separate action; the normal Sidekin Publish button commits a changed draft for
 you.
 
 ## Choose the right access
 
 **The owner's calendar agent** uses a calendar access token with
-`https://mcp.sure.day/mcp`. It can read that owner's connected sources. Applying
+`https://mcp.sidekin.ai/mcp`. It can read that owner's connected sources. Applying
 event changes needs both an editable agent grant and separate source-management
 permission. [Connect a calendar agent](/calendar).
 
 **The owner's frontend agent** uses a project token with
-`https://app.sure.day/project-mcp` or that project’s Git remote. It can read and
+`https://app.sidekin.ai/project-mcp` or that project’s Git remote. It can read and
 edit source, change scheduling policy, and publish. Keep the token in the agent’s
 secret configuration, never in public frontend code or a Git remote URL.
 
-**The booker or their agent** uses `https://app.sure.day/booking-rpc`. Reading
+**The booker or their agent** uses `https://app.sidekin.ai/booking-rpc`. Reading
 slots and creating a booking require no owner login. Changing an existing booking
 requires its private management token. Availability does not expose event titles
 or attendees.
@@ -58,10 +58,10 @@ A pending operation is not a confirmed booking.
 - [Calendar MCP and source edits](/calendar)
 - [Frontend and scheduling configuration](/configuration)
 - [Booking RPC reference](/booking)
-- [Project MCP tool schemas](https://sure.day/docs/mcp-tools.json), generated from the implemented project catalog;
+- [Project MCP tool schemas](https://sidekin.ai/docs/mcp-tools.json), generated from the implemented project catalog;
   authenticated `tools/list` is authoritative.
-- [Agent index](https://sure.day/llms.txt) and
-  [complete reference as text](https://sure.day/llms-full.txt).
+- [Agent index](https://sidekin.ai/llms.txt) and
+  [complete reference as text](https://sidekin.ai/llms-full.txt).
 
 Mintlify’s documentation search MCP, if enabled for this site, searches these
 pages. It does not authorize either calendar or project operations. Calendar MCP
@@ -71,11 +71,11 @@ and project MCP use separate endpoints, tokens, and tool catalogs.
 
 Projects host static HTML, CSS, and JavaScript with one scheduling offer per
 project. Git accepts fast-forward updates to `main`. Public booking supports
-creation, rescheduling, and cancellation of Sure-created Google Calendar bookings
+creation, rescheduling, and cancellation of Sidekin-created Google Calendar bookings
 after the owner selects a destination and grants booking write access.
 
 External project MCP does not expose private calendar reads, account connections,
 concierge conversations, memory, worker control, or voice. Private calendar reads
 and supported source-event changes use the separate owner-authorized calendar MCP.
-Concierge conversations, memory, workers, and voice remain inside Sure. Payments,
+Concierge conversations, memory, workers, and voice remain inside Sidekin. Payments,
 team routing, and webhooks are future possibilities, not current public contracts.

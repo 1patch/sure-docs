@@ -3,7 +3,7 @@ title: "Public booking API"
 description: "Find times, create bookings, and manage them with scoped capabilities."
 ---
 
-Use this API to find times and create, inspect, move, or cancel a booking made through a Sure booking page. Project source, Git, publication, and MCP editing are documented in [Projects](/projects). Scheduling rules, forms, and the hosted frontend runtime are documented in [Configuration](/configuration).
+Use this API to find times and create, inspect, move, or cancel a booking made through a Sidekin booking page. Project source, Git, publication, and MCP editing are documented in [Projects](/projects). Scheduling rules, forms, and the hosted frontend runtime are documented in [Configuration](/configuration).
 
 All identifiers, dates, people, and tokens below are synthetic examples or placeholders. Replace `PROJECT_ID`, `SLOT_TOKEN`, and `MANAGEMENT_TOKEN` with values returned for your page. Do not invent a slot token or build a management token yourself.
 
@@ -11,7 +11,7 @@ All identifiers, dates, people, and tokens below are synthetic examples or place
 
 The owner must publish a booking page and choose a writable Google destination in **Calendars → Booking pages → the page → Booking calendar**. Connecting a read-only calendar or iCalendar feed is not booking consent. The owner must grant Google booking access and save a writable calendar as the destination.
 
-The public API does not configure that destination or grant provider access. It operates only on Sure bookings. It is not an API for arbitrary calendar event writes, RSVP changes, payment collection, or a promised email delivery service.
+The public API does not configure that destination or grant provider access. It operates only on Sidekin bookings. It is not an API for arbitrary calendar event writes, RSVP changes, payment collection, or a promised email delivery service.
 
 Availability requires successful checks of the owner's connected calendars. An unavailable calendar is an error, not evidence of free time. Responses expose bookable times, not the owner's calendar events or private source records.
 
@@ -20,7 +20,7 @@ Availability requires successful checks of the owner's connected calendars. An u
 Send JSON to:
 
 ```text
-POST https://app.sure.day/booking-rpc
+POST https://app.sidekin.ai/booking-rpc
 Content-Type: application/json
 ```
 
@@ -41,7 +41,7 @@ Public `slots` and `book` requests need no owner session or project Git/MCP toke
 
 ```js
 async function bookingRpc(operation, args) {
-  const response = await fetch('https://app.sure.day/booking-rpc', {
+  const response = await fetch('https://app.sidekin.ai/booking-rpc', {
     method: 'POST',
     credentials: 'omit',
     headers: { 'Content-Type': 'application/json' },
@@ -55,7 +55,7 @@ async function bookingRpc(operation, args) {
 }
 ```
 
-Browser CORS currently allows the Sure app origin, `https://app.sure.day`, and its configured hosted-page origin, currently `https://pages.sure.day`. Arbitrary external website origins are not enabled. `OPTIONS` is supported for approved origins, with `Content-Type` as the allowed request header. A server client can call the endpoint without an `Origin` header. Sure-hosted pages also restrict framing to the Sure app; publishing a page does not enable arbitrary third-party iframe embedding.
+Browser CORS currently allows the Sidekin app origin, `https://app.sidekin.ai`, and its configured hosted-page origin, currently `https://pages.sidekin.ai`. Arbitrary external website origins are not enabled. `OPTIONS` is supported for approved origins, with `Content-Type` as the allowed request header. A server client can call the endpoint without an `Origin` header. Sidekin-hosted pages also restrict framing to the Sidekin app; publishing a page does not enable arbitrary third-party iframe embedding.
 
 The request body limit is 64 KiB (65,536 bytes). The endpoint currently allows 40 requests per minute per client IP, shared across operations and preflight requests. Handle `429`, respect `Retry-After` when present, and use backoff. Treat rate limits as operational limits that may change; avoid polling every second.
 
@@ -135,7 +135,7 @@ The response contains a booking and its private management link:
     "end": "2030-04-08T13:25:00.000Z",
     "timezone": "America/New_York"
   },
-  "manageUrl": "https://app.sure.day/booking/#token=MANAGEMENT_TOKEN"
+  "manageUrl": "https://app.sidekin.ai/booking/#token=MANAGEMENT_TOKEN"
 }
 ```
 

@@ -7,13 +7,13 @@ Use your own MCP-capable agent to change a booking page's heading. The same work
 
 ## 1. Get a project token
 
-An invited owner signs in at [app.sure.day](https://app.sure.day), opens the Calendars settings gear, then **Booking pages**, and creates or selects a page. Under **Advanced → Agent access**, choose **Create access token**. Save it in your agent's secret configuration; it is shown only once.
+An invited owner signs in at [app.sidekin.ai](https://app.sidekin.ai), opens the Calendars settings gear, then **Booking pages**, and creates or selects a page. Under **Advanced → Agent access**, choose **Create access token**. Save it in your agent's secret configuration; it is shown only once.
 
-Connect your agent to `https://app.sure.day/project-mcp` with an `Authorization: Bearer <PROJECT_ACCESS_TOKEN>` header. Replace the placeholder through your client's secret settings. Keep the token out of source files, remote URLs, commits, and logs.
+Connect your agent to `https://app.sidekin.ai/project-mcp` with an `Authorization: Bearer <PROJECT_ACCESS_TOKEN>` header. Replace the placeholder through your client's secret settings. Keep the token out of source files, remote URLs, commits, and logs.
 
 **Use project MCP for this workflow.** It reads and changes your selected page. [Calendar MCP](/calendar) uses a different endpoint and token to read private calendar events and apply authorized source edits. The docs site's search MCP only finds documentation. These credentials and tool catalogs are separate.
 
-Your MCP client should initialize with protocol version `2025-03-26` and discover the tools with `tools/list`. See the [connection contract](/projects#mcp-connection) and [tool schemas](https://sure.day/docs/mcp-tools.json) if configuring a client manually. The token selects one existing project; there is no project creation or token-management tool on this endpoint.
+Your MCP client should initialize with protocol version `2025-03-26` and discover the tools with `tools/list`. See the [connection contract](/projects#mcp-connection) and [tool schemas](https://sidekin.ai/docs/mcp-tools.json) if configuring a client manually. The token selects one existing project; there is no project creation or token-management tool on this endpoint.
 
 ## 2. Read the page
 
@@ -107,7 +107,7 @@ When the page is ready, call `project_publish` with the source revision you revi
 }
 ```
 
-Check that `publishedRevision` equals the reviewed revision, then open the returned `publicUrl`. Existing bookings are unchanged. Accepting new bookings also requires the owner to connect and choose a booking calendar in Sure; see [Booking RPC](/booking).
+Check that `publishedRevision` equals the reviewed revision, then open the returned `publicUrl`. Existing bookings are unchanged. Accepting new bookings also requires the owner to connect and choose a booking calendar in Sidekin; see [Booking RPC](/booking).
 
 The browser's **Publish** button automatically commits a dirty draft. MCP requires the explicit commit step shown above.
 

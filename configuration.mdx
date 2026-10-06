@@ -3,11 +3,11 @@ title: "Configuration and runtime"
 description: "Configure availability, forms, styling, and your hosted booking frontend."
 ---
 
-A Sure project contains ordinary HTML, CSS, and JavaScript plus `sure.json`. The JSON file defines the scheduling rules and the starter frontend's presentation. It is validated when source is saved or imported. See [Projects](/projects) for Git, MCP, previews, publishing, and rollback, and [Booking](/booking) for the public booking API.
+A Sidekin project contains ordinary HTML, CSS, and JavaScript plus `sure.json`. The JSON file defines the scheduling rules and the starter frontend's presentation. It is validated when source is saved or imported. See [Projects](/projects) for Git, MCP, previews, publishing, and rollback, and [Booking](/booking) for the public booking API.
 
 ## A complete valid `sure.json`
 
-This example is synthetic. Exception dates are examples, not holidays inferred by Sure. All top-level sections shown here are required; there is no implicit defaulting of missing sections.
+This example is synthetic. Exception dates are examples, not holidays inferred by Sidekin. All top-level sections shown here are required; there is no implicit defaulting of missing sections.
 
 ```json
 {
@@ -92,7 +92,7 @@ Duration is elapsed time in minutes. Actual instants are checked through dayligh
 
 Minimum notice is measured from the current instant. The booking's start must be before the current instant plus `horizonDays × 24 hours`; this is a rolling horizon, not a count of local calendar-date boundaries.
 
-Buffer is a minimum gap from busy time, before or after the booking. When another Sure booking also has a buffer, the larger buffer applies, rather than adding both buffers. Buffer is a conflict rule; it does not add to the displayed meeting duration or require the buffer itself to fit inside an availability window.
+Buffer is a minimum gap from busy time, before or after the booking. When another Sidekin booking also has a buffer, the larger buffer applies, rather than adding both buffers. Buffer is a conflict rule; it does not add to the displayed meeting duration or require the buffer itself to fit inside an availability window.
 
 The backend enforces scheduling and required form answers. Theme and copy guide the starter frontend; changing JavaScript or CSS can change its appearance, but does not bypass scheduling validation. Required question answers are trimmed nonempty strings, each at most 2,000 characters; see [Booking](/booking#book-create-a-booking).
 
@@ -110,15 +110,15 @@ No package installation or build step is required for the starter. Use relative 
 
 ## Hosted URLs and runtime JSON
 
-Use the `publicUrl` or `previewUrl` returned by the project API rather than constructing the host yourself. Current hosting uses the separate origin `https://pages.sure.day`.
+Use the `publicUrl` or `previewUrl` returned by the project API rather than constructing the host yourself. Current hosting uses the separate origin `https://pages.sidekin.ai`.
 
 | URL shape | Behavior |
 | --- | --- |
-| `https://pages.sure.day/p/PROJECT_ID/` | Redirects to the currently published revision's `index.html`. Unpublished pages return `404`. |
+| `https://pages.sidekin.ai/p/PROJECT_ID/` | Redirects to the currently published revision's `index.html`. Unpublished pages return `404`. |
 | `.../p/PROJECT_ID/r/REVISION/index.html` | Source from that retained published release. |
 | `.../p/PROJECT_ID/v/PREVIEW_CAPABILITY/index.html` | A specific draft snapshot. Preview capabilities expire after one hour; keep preview URLs private. |
 
-`REVISION` is a source revision returned by Sure, not a Git commit SHA. A preview is fixed to the source that was previewed; saving later edits does not change an already-open preview. Request a fresh preview after editing. Historical public URLs are available while that release is retained; do not assume unlimited release retention.
+`REVISION` is a source revision returned by Sidekin, not a Git commit SHA. A preview is fixed to the source that was previewed; saving later edits does not change an already-open preview. Request a fresh preview after editing. Historical public URLs are available while that release is retained; do not assume unlimited release retention.
 
 From either directory, fetch the runtime beside your HTML:
 
@@ -132,7 +132,7 @@ The exact response shape is:
 
 ```js
 {
-  appOrigin: 'https://app.sure.day',
+  appOrigin: 'https://app.sidekin.ai',
   projectId: 'PROJECT_ID',
   revision: 'SOURCE_REVISION',
   config: { /* complete validated sure.json configuration */ },
@@ -144,7 +144,7 @@ The exact response shape is:
 
 Send public booking requests to `runtime.appOrigin + '/booking-rpc'` with `runtime.projectId`. A custom frontend must disable booking submissions when `runtime.preview` is true. The starter disables its search and booking buttons and labels the page as a preview. Preview source does not become the active booking policy: the public API always uses the currently published page, and there is no separate preview booking endpoint.
 
-Hosting serves `GET` and `HEAD`. Hosted code is isolated from the signed-in app's origin. Its content security policy allows scripts and styles from its own origin, including inline scripts/styles; connections can go to that origin and the Sure app. Objects, child frames, workers, and native form submissions are blocked. The page may only be framed by the Sure app. Use JavaScript booking RPC, not an HTML form action to another service. Arbitrary external script, font, analytics, or payment URLs are not enabled by default.
+Hosting serves `GET` and `HEAD`. Hosted code is isolated from the signed-in app's origin. Its content security policy allows scripts and styles from its own origin, including inline scripts/styles; connections can go to that origin and the Sidekin app. Objects, child frames, workers, and native form submissions are blocked. The page may only be framed by the Sidekin app. Use JavaScript booking RPC, not an HTML form action to another service. Arbitrary external script, font, analytics, or payment URLs are not enabled by default.
 
 The supplied `sure-font.ttf` is the starter's Manrope font. `theme.fontFamily` chooses fonts already available to the page or device; it does not relax hosting restrictions.
 

@@ -3,13 +3,13 @@ title: "Projects, MCP, and Git"
 description: "Edit, version, preview, and publish a booking page with your own agent or Git tools."
 ---
 
-Each booking page has editable HTML, CSS, JavaScript, a `sure.json` configuration file, and a Git remote hosted by Sure. The browser editor, MCP tools, and Git operate on the same source. Saving or pushing changes updates the draft; publishing is a separate action.
+Each booking page has editable HTML, CSS, JavaScript, a `sure.json` configuration file, and a Git remote hosted by Sidekin. The browser editor, MCP tools, and Git operate on the same source. Saving or pushing changes updates the draft; publishing is a separate action.
 
 Use [Configuration](/configuration) for the `sure.json` schema and [Booking RPC](/booking) for the public API a page calls to find and book time. For a first change, follow the [Quickstart](/quickstart).
 
 ## Get access
 
-An invited owner signs in at [app.sure.day](https://app.sure.day), opens the Calendars settings gear, then **Booking pages**, and creates or selects a page. Under **Advanced → Agent access**, choose **Create access token**. Copy the token once and save it in your agent's secret configuration or a secure credential manager.
+An invited owner signs in at [app.sidekin.ai](https://app.sidekin.ai), opens the Calendars settings gear, then **Booking pages**, and creates or selects a page. Under **Advanced → Agent access**, choose **Create access token**. Copy the token once and save it in your agent's secret configuration or a secure credential manager.
 
 The same token authorizes MCP and Git for that one project, including publication and rollback. It does not grant access to other projects, private calendar events, account connections, agent memory, or booking records. **Revoke project tokens** in the owner UI revokes all tokens for that project.
 
@@ -19,7 +19,7 @@ All capitalized values in examples below are placeholders. Never put a token in 
 
 ## MCP connection
 
-Endpoint: `https://app.sure.day/project-mcp`
+Endpoint: `https://app.sidekin.ai/project-mcp`
 
 Send JSON-RPC 2.0 requests over HTTPS `POST`, with these headers:
 
@@ -67,7 +67,7 @@ Send `notifications/initialized` after initialization; notifications receive `20
 
 The response's `result.tools` array contains each tool's `name`, `description`, and `inputSchema`.
 
-The [static tool schemas](https://sure.day/docs/mcp-tools.json) are also available without authentication. They describe the API; making project requests still requires a project token.
+The [static tool schemas](https://sidekin.ai/docs/mcp-tools.json) are also available without authentication. They describe the API; making project requests still requires a project token.
 
 Call a tool by its exact underscore-separated name:
 
@@ -117,11 +117,11 @@ This example shows the `project_preview` result shape; the server supplies the r
 | `publishedRevision` | Published source revision, or `null` before publication. It can differ from `revision`. |
 | `publicUrl` | The page's stable public URL, or `null` if hosting is unavailable. Before the first publication, the page is not available at this URL. |
 | `releases` | Recorded releases, each with `revision`, `gitCommit`, and `publishedAt`. Up to 50 are retained in this list. |
-| `appOrigin` | Origin of the Sure app and public booking API. |
+| `appOrigin` | Origin of the Sidekin app and public booking API. |
 
 Times such as `publishedAt` and `expiresAt` are Unix milliseconds. Other fields may be returned; clients should ignore fields they do not use.
 
-**`expectedRevision` is the source `revision`, not the Git commit SHA.** Treat it as an opaque value returned by Sure. Read current state, make your intended change, and use the returned revision for the next operation. A stale revision fails instead of overwriting someone else's edits. Read again and reconcile the changes before retrying.
+**`expectedRevision` is the source `revision`, not the Git commit SHA.** Treat it as an opaque value returned by Sidekin. Read current state, make your intended change, and use the returned revision for the next operation. A stale revision fails instead of overwriting someone else's edits. Read again and reconcile the changes before retrying.
 
 ### Available tools
 
@@ -191,13 +191,13 @@ Tool errors contain a human-readable message, not a structured HTTP status field
 Copy the HTTPS remote from **Advanced → Git repository**, or read `repository.url` from `project_get`. Its form is:
 
 ```text
-https://app.sure.day/git/projects/PROJECT_ID.git
+https://app.sidekin.ai/git/projects/PROJECT_ID.git
 ```
 
-Use username **`sure`** and the project token as the password when Git prompts. HTTPS Basic authentication is supported; integrations can alternatively supply `Authorization: Bearer <PROJECT_ACCESS_TOKEN>`. Keep credentials outside the remote URL. Configure a secure Git credential helper with credentials scoped to the repository path when working on multiple Sure projects.
+Use username **`sure`** and the project token as the password when Git prompts. HTTPS Basic authentication is supported; integrations can alternatively supply `Authorization: Bearer <PROJECT_ACCESS_TOKEN>`. Keep credentials outside the remote URL. Configure a secure Git credential helper with credentials scoped to the repository path when working on multiple Sidekin projects.
 
 ```sh
-git -c credential.useHttpPath=true clone https://app.sure.day/git/projects/PROJECT_ID.git booking-page
+git -c credential.useHttpPath=true clone https://app.sidekin.ai/git/projects/PROJECT_ID.git booking-page
 cd booking-page
 git config credential.useHttpPath true
 git pull --ff-only origin main
@@ -207,24 +207,24 @@ git commit -m "Update booking page"
 git push origin main
 ```
 
-Replace `PROJECT_ID` with your project's ID. The remote accepts fast-forward updates to the existing `main` branch. Additional branches, tags, branch deletion, and forced history rewrites are rejected. Successful pushes preserve Git history and update the Sure draft as committed source; they do not publish it. Read the resulting `revision` with MCP before publishing.
+Replace `PROJECT_ID` with your project's ID. The remote accepts fast-forward updates to the existing `main` branch. Additional branches, tags, branch deletion, and forced history rewrites are rejected. Successful pushes preserve Git history and update the Sidekin draft as committed source; they do not publish it. Read the resulting `revision` with MCP before publishing.
 
 If someone has committed new work to `main`, fetch and integrate it locally, then push again. For example, `git pull --rebase origin main` can replay your local commits on the latest shared history. Resolve any conflicts; do not force-push around them.
 
-A push is also rejected while the browser or MCP has uncommitted draft edits. Preserve those edits by committing them in Sure or with `project_commit`, then pull and reconcile before pushing. `project_pull` means importing the hosted branch into the Sure draft, not pulling into your local checkout. Only use `discardLocalChanges: true` when the owner has authorized replacing that draft.
+A push is also rejected while the browser or MCP has uncommitted draft edits. Preserve those edits by committing them in Sidekin or with `project_commit`, then pull and reconcile before pushing. `project_pull` means importing the hosted branch into the Sidekin draft, not pulling into your local checkout. Only use `discardLocalChanges: true` when the owner has authorized replacing that draft.
 
 Git authentication failures return `401`; a token for another project returns `404`. Draft conflicts return `409`. Invalid pushed source or history is rejected by Git without accepting a new remote commit. Keep local work and resolve the reported problem before retrying.
 
 ### Export once to GitHub
 
-Create an empty repository in your own GitHub account or organization, then run these commands in your local Sure clone using your own GitHub authentication:
+Create an empty repository in your own GitHub account or organization, then run these commands in your local Sidekin clone using your own GitHub authentication:
 
 ```sh
 git remote add github https://github.com/OWNER/REPOSITORY.git
 git push github main
 ```
 
-This exports the current branch and its history. It does not configure synchronization. `origin` remains the Sure remote; changes made only on GitHub do not update the Sure draft or public page.
+This exports the current branch and its history. It does not configure synchronization. `origin` remains the Sidekin remote; changes made only on GitHub do not update the Sidekin draft or public page.
 
 ## Current source and transport limits
 

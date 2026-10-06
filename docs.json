@@ -1,6 +1,6 @@
 {
   "$schema": "https://mintlify.com/docs.json",
-  "name": "Sure",
+  "name": "Sidekin",
   "theme": "mint",
   "description": "Calendar building blocks for people, companies, and their agents.",
   "colors": {
@@ -36,12 +36,12 @@
   "logo": {
     "light": "/logo.svg",
     "dark": "/logo.svg",
-    "href": "https://sure.day"
+    "href": "https://sidekin.ai"
   },
   "navigation": {
     "groups": [
       {
-        "group": "Build with Sure",
+        "group": "Build with Sidekin",
         "pages": [
           "index",
           "quickstart"
@@ -61,14 +61,14 @@
   "navbar": {
     "links": [
       {
-        "label": "Sure",
-        "href": "https://sure.day"
+        "label": "Sidekin",
+        "href": "https://sidekin.ai"
       }
     ],
     "primary": {
       "type": "button",
       "label": "Sign in",
-      "href": "https://app.sure.day/auth/login"
+      "href": "https://app.sidekin.ai/auth/login"
     }
   },
   "contextual": {
@@ -80,11 +80,11 @@
   "footer": {
     "links": [
       {
-        "header": "Sure",
+        "header": "Sidekin",
         "items": [
           {
             "label": "Privacy & data use",
-            "href": "https://sure.day/privacy/"
+            "href": "https://sidekin.ai/privacy/"
           },
           {
             "label": "Say hello",

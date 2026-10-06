@@ -3,16 +3,16 @@ title: "Calendar MCP"
 description: "Connect your agent to private calendar reads, reviewed edits, and custom labels."
 ---
 
-Calendar MCP lets an owner connect an external agent to their Google and iCloud calendars. It reads source events, prepares exact changes, applies authorized edits, and keeps custom labels in Sure.
+Calendar MCP lets an owner connect an external agent to their Google and iCloud calendars. It reads source events, prepares exact changes, applies authorized edits, and keeps custom labels in Sidekin.
 
 This uses a separate endpoint and credential from [project MCP](/projects). Project tokens edit booking-page source; calendar tokens access the owner's connected calendar sources. Neither token belongs in a public booking frontend. For slots and booking management, use the [public booking API](/booking).
 
 ## Connect an agent
 
-1. Sign in to [Sure](https://app.sure.day), open **Calendars → Agent connections → Manage calendar access**.
+1. Sign in to [Sidekin](https://app.sidekin.ai), open **Calendars → Agent connections → Manage calendar access**.
 2. Name the connection. Leave **Allow authorized edits** unchecked for read-only access, or enable it when the agent should apply authorized changes and manage labels.
-3. Choose **Create connection** and copy the token into your agent's secret configuration. Sure shows it once. Tokens expire after 30 days; use **Revoke** beside a connection to revoke that token. Up to 12 active connections are allowed.
-4. Configure a Streamable HTTP MCP client with `https://mcp.sure.day/mcp` and `Authorization: Bearer <CALENDAR_ACCESS_TOKEN>`.
+3. Choose **Create connection** and copy the token into your agent's secret configuration. Sidekin shows it once. Tokens expire after 30 days; use **Revoke** beside a connection to revoke that token. Up to 12 active connections are allowed.
+4. Configure a Streamable HTTP MCP client with `https://mcp.sidekin.ai/mcp` and `Authorization: Bearer <CALENDAR_ACCESS_TOKEN>`.
 
 This is an account-scoped grant, not a grant for one booking page or one calendar. Reads can include all of the owner's connected sources, including calendars hidden from their agenda; `connectionId` filters an individual read, not the token's authority. A read-only token cannot apply provider edits or change labels. Preparing a preview does not change the provider.
 
@@ -20,7 +20,7 @@ For a client that supports bearer credentials from environment variables:
 
 ```toml
 [mcp_servers.sure]
-url = "https://mcp.sure.day/mcp"
+url = "https://mcp.sidekin.ai/mcp"
 bearer_token_env_var = "SURE_MCP_TOKEN"
 ```
 
@@ -30,8 +30,8 @@ Set `SURE_MCP_TOKEN` through the client's secret environment. Keep tokens out of
 
 An editable MCP grant does not grant provider access by itself. The source must also allow management, and the individual item must be writable.
 
-- **Google:** under Calendar access, choose **Allow calendar management** for the connected account and complete Google consent. This is separate from read access and booking consent. Sure also checks the calendar's writer or owner permission.
-- **iCloud:** connect your Apple Account email and an app-specific password in Calendars settings, then choose **Allow calendar management** for that iCloud connection in Calendar access. Sure uses CalDAV directly; no Mac companion or awake computer is required. **Disable calendar management** removes that connection's management permission. Calendar privileges and a usable source revision still determine whether an item is writable.
+- **Google:** under Calendar access, choose **Allow calendar management** for the connected account and complete Google consent. This is separate from read access and booking consent. Sidekin also checks the calendar's writer or owner permission.
+- **iCloud:** connect your Apple Account email and an app-specific password in Calendars settings, then choose **Allow calendar management** for that iCloud connection in Calendar access. Sidekin uses CalDAV directly; no Mac companion or awake computer is required. **Disable calendar management** removes that connection's management permission. Calendar privileges and a usable source revision still determine whether an item is writable.
 - **iCalendar feeds:** remain read-only. Use their original provider connection for source edits.
 
 ## Read before acting
@@ -44,7 +44,7 @@ The complete calendar tool names are:
 | --- | --- |
 | `sure_connections` | Empty arguments. Lists source connections and their management permission; also reports the current time and that Reminders are unsupported. |
 | `sure_read` | Required `from`, `to`, `timezone`; optional `connectionId`. Reads a positive range of at most 31 elapsed days. Instants must include an offset; timezone must be valid. |
-| `sure_get` | Required `target`. Reads a current source item, provider revision, and Sure labels. |
+| `sure_get` | Required `target`. Reads a current source item, provider revision, and Sidekin labels. |
 | `sure_prepare_change` | Required `target`, `expectedRevision`, `action`, `scope`, `notifications`, `reason`; optional `patch` and `response`. Returns an expiring before/after preview without applying it. |
 | `sure_apply_change` | Required `planId`, `digest`, `authority`. Applies the exact prepared preview using its creating connection. |
 | `sure_audit` | Optional `planId`. Returns recent edit summaries, or one plan's full before/after and outcome. |
@@ -53,7 +53,7 @@ The complete calendar tool names are:
 | `sure_label_item` | Required `target`, `labels`, `expectedRevision`, `reason`. Assigns label IDs using the item's `labelsRevision`, not its provider revision. |
 | `sure_skill` | Required `name`: `calendar-review`, `calendar-denoise`, `calendar-overlaps`, `calendar-close-loops`, or `calendar-labels`. |
 
-These tools differ from the eight `project_*` tools in the [project schema download](https://sure.day/docs/mcp-tools.json). The calendar endpoint's authenticated `tools/list` is authoritative for calendar schemas. The five recipes are also available through MCP prompts and resources at `sure://skills/NAME/SKILL.md`.
+These tools differ from the eight `project_*` tools in the [project schema download](https://sidekin.ai/docs/mcp-tools.json). The calendar endpoint's authenticated `tools/list` is authoritative for calendar schemas. The five recipes are also available through MCP prompts and resources at `sure://skills/NAME/SKILL.md`.
 
 Use `calendar-close-loops` to sweep unanswered invitations into **Accept for me**,
 **Reject**, or **Human decides**, with concise reasons based on your preferences
@@ -142,9 +142,9 @@ Replaying the same plan does not dispatch it again. After a timeout, use `sure_a
 
 ## Provider and label boundaries
 
-Google supports existing-event title, description, location, timed start/end, busy/free, deletion and the pending self RSVP described above. iCloud supports personal-event changes and individual recurring occurrences; invitations remain in the source app. Unsupported iCloud timezones or recurrence structures can make a read incomplete. Neither provider exposes event creation, attendee-list changes, recurrence-rule changes, or all-day date changes through these tools. Reminders are not connected. Use the booking flow for Sure-managed bookings identified as nonwritable by the calendar tools.
+Google supports existing-event title, description, location, timed start/end, busy/free, deletion and the pending self RSVP described above. iCloud supports personal-event changes and individual recurring occurrences; invitations remain in the source app. Unsupported iCloud timezones or recurrence structures can make a read incomplete. Neither provider exposes event creation, attendee-list changes, recurrence-rule changes, or all-day date changes through these tools. Reminders are not connected. Use the booking flow for Sidekin-managed bookings identified as nonwritable by the calendar tools.
 
-Labels are Sure metadata. They do not change provider titles, colors, or busy/free state. A taxonomy holds up to 60 unique IDs matching `^[a-z][a-z0-9-]{0,49}$`; each label has `id`, `name` (1–80 characters), and `description` (up to 500). Optional `company` is up to 150 characters and gives context to this owner's taxonomy; it does not grant organization-wide access. Preserve stable IDs when revising the taxonomy. An item accepts up to 20 defined label IDs and a reason of 1–1,000 characters. Use the taxonomy's `revision` for `sure_define_labels`, and the item's `labelsRevision` for `sure_label_item`.
+Labels are Sidekin metadata. They do not change provider titles, colors, or busy/free state. A taxonomy holds up to 60 unique IDs matching `^[a-z][a-z0-9-]{0,49}$`; each label has `id`, `name` (1–80 characters), and `description` (up to 500). Optional `company` is up to 150 characters and gives context to this owner's taxonomy; it does not grant organization-wide access. Preserve stable IDs when revising the taxonomy. An item accepts up to 20 defined label IDs and a reason of 1–1,000 characters. Use the taxonomy's `revision` for `sure_define_labels`, and the item's `labelsRevision` for `sure_label_item`.
 
 ## Transport and limits
 
